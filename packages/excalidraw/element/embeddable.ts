@@ -13,7 +13,7 @@ import type {
 } from "./types";
 import { sanitizeHTMLAttribute } from "../data/url";
 import type { MarkRequired } from "../utility-types";
-import { StoreAction } from "../store";
+import { SnapshotAction } from "../store";
 
 type IframeDataWithSandbox = MarkRequired<IframeData, "sandbox">;
 
@@ -341,7 +341,7 @@ export const actionSetEmbeddableAsActiveTool = register({
           type: "embeddable",
         }),
       },
-      storeAction: StoreAction.NONE,
+      storeAction: SnapshotAction.NONE,
     };
   },
 });
