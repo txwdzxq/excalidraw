@@ -17,7 +17,7 @@ import {
 } from "../element/typeChecks";
 import { updateActiveTool } from "../utils";
 import { TrashIcon } from "../components/icons";
-import { SnapshotAction } from "../store";
+import { StoreAction } from "../store";
 import { mutateElbowArrow } from "../element/routing";
 
 const deleteSelectedElements = (
@@ -140,7 +140,7 @@ export const actionDeleteSelected = register({
             ...nextAppState,
             editingLinearElement: null,
           },
-          storeAction: SnapshotAction.CAPTURE,
+          storeAction: StoreAction.CAPTURE,
         };
       }
 
@@ -176,7 +176,7 @@ export const actionDeleteSelected = register({
                 : [0],
           },
         },
-        storeAction: SnapshotAction.CAPTURE,
+        storeAction: StoreAction.CAPTURE,
       };
     }
     let { elements: nextElements, appState: nextAppState } =
@@ -200,8 +200,8 @@ export const actionDeleteSelected = register({
         getNonDeletedElements(elements),
         appState,
       )
-        ? SnapshotAction.CAPTURE
-        : SnapshotAction.NONE,
+        ? StoreAction.CAPTURE
+        : StoreAction.NONE,
     };
   },
   keyTest: (event, appState, elements) =>

@@ -37,7 +37,7 @@ import {
 import { DEFAULT_CANVAS_BACKGROUND_PICKS } from "../colors";
 import type { SceneBounds } from "../element/bounds";
 import { setCursor } from "../cursor";
-import { SnapshotAction } from "../store";
+import { StoreAction } from "../store";
 import { clamp, roundToStep } from "../../math";
 
 export const actionChangeViewBackgroundColor = register({
@@ -55,8 +55,8 @@ export const actionChangeViewBackgroundColor = register({
     return {
       appState: { ...appState, ...value },
       storeAction: !!value.viewBackgroundColor
-        ? SnapshotAction.CAPTURE
-        : SnapshotAction.NONE,
+        ? StoreAction.CAPTURE
+        : StoreAction.NONE,
     };
   },
   PanelComponent: ({ elements, appState, updateData, appProps }) => {
@@ -114,7 +114,7 @@ export const actionClearCanvas = register({
             ? { ...appState.activeTool, type: "selection" }
             : appState.activeTool,
       },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
 });
@@ -139,7 +139,7 @@ export const actionZoomIn = register({
         ),
         userToFollow: null,
       },
-      storeAction: SnapshotAction.NONE,
+      storeAction: StoreAction.NONE,
     };
   },
   PanelComponent: ({ updateData, appState }) => (
@@ -180,7 +180,7 @@ export const actionZoomOut = register({
         ),
         userToFollow: null,
       },
-      storeAction: SnapshotAction.NONE,
+      storeAction: StoreAction.NONE,
     };
   },
   PanelComponent: ({ updateData, appState }) => (
@@ -221,7 +221,7 @@ export const actionResetZoom = register({
         ),
         userToFollow: null,
       },
-      storeAction: SnapshotAction.NONE,
+      storeAction: StoreAction.NONE,
     };
   },
   PanelComponent: ({ updateData, appState }) => (
@@ -340,7 +340,7 @@ export const zoomToFitBounds = ({
       scrollY: centerScroll.scrollY,
       zoom: { value: newZoomValue },
     },
-    storeAction: SnapshotAction.NONE,
+    storeAction: StoreAction.NONE,
   };
 };
 
@@ -471,7 +471,7 @@ export const actionToggleTheme = register({
         theme:
           value || (appState.theme === THEME.LIGHT ? THEME.DARK : THEME.LIGHT),
       },
-      storeAction: SnapshotAction.NONE,
+      storeAction: StoreAction.NONE,
     };
   },
   keyTest: (event) => event.altKey && event.shiftKey && event.code === CODES.D,
@@ -509,7 +509,7 @@ export const actionToggleEraserTool = register({
         activeEmbeddable: null,
         activeTool,
       },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   keyTest: (event) => event.key === KEYS.E,
@@ -548,7 +548,7 @@ export const actionToggleHandTool = register({
         activeEmbeddable: null,
         activeTool,
       },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   keyTest: (event) =>

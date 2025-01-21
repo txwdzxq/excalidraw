@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AppClassProperties, AppState, Primitive } from "../types";
-import type { SnapshotActionType } from "../store";
+import type { StoreActionType } from "../store";
 import {
   DEFAULT_ELEMENT_BACKGROUND_COLOR_PALETTE,
   DEFAULT_ELEMENT_BACKGROUND_PICKS,
@@ -105,7 +105,7 @@ import {
   tupleToCoors,
 } from "../utils";
 import { register } from "./register";
-import { SnapshotAction } from "../store";
+import { StoreAction } from "../store";
 import { Fonts, getLineHeight } from "../fonts";
 import {
   bindLinearElement,
@@ -252,7 +252,7 @@ const changeFontSize = (
           ? [...newFontSizes][0]
           : fallbackValue ?? appState.currentItemFontSize,
     },
-    storeAction: SnapshotAction.CAPTURE,
+    storeAction: StoreAction.CAPTURE,
   };
 };
 
@@ -283,8 +283,8 @@ export const actionChangeStrokeColor = register({
         ...value,
       },
       storeAction: !!value.currentItemStrokeColor
-        ? SnapshotAction.CAPTURE
-        : SnapshotAction.NONE,
+        ? StoreAction.CAPTURE
+        : StoreAction.NONE,
     };
   },
   PanelComponent: ({ elements, appState, updateData, appProps }) => (
@@ -329,8 +329,8 @@ export const actionChangeBackgroundColor = register({
         ...value,
       },
       storeAction: !!value.currentItemBackgroundColor
-        ? SnapshotAction.CAPTURE
-        : SnapshotAction.NONE,
+        ? StoreAction.CAPTURE
+        : StoreAction.NONE,
     };
   },
   PanelComponent: ({ elements, appState, updateData, appProps }) => (
@@ -374,7 +374,7 @@ export const actionChangeFillStyle = register({
         }),
       ),
       appState: { ...appState, currentItemFillStyle: value },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => {
@@ -447,7 +447,7 @@ export const actionChangeStrokeWidth = register({
         }),
       ),
       appState: { ...appState, currentItemStrokeWidth: value },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => (
@@ -502,7 +502,7 @@ export const actionChangeSloppiness = register({
         }),
       ),
       appState: { ...appState, currentItemRoughness: value },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => (
@@ -553,7 +553,7 @@ export const actionChangeStrokeStyle = register({
         }),
       ),
       appState: { ...appState, currentItemStrokeStyle: value },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => (
@@ -608,7 +608,7 @@ export const actionChangeOpacity = register({
         true,
       ),
       appState: { ...appState, currentItemOpacity: value },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => (
@@ -796,22 +796,22 @@ export const actionChangeFontFamily = register({
           ...appState,
           ...nextAppState,
         },
-        storeAction: SnapshotAction.UPDATE,
+        storeAction: StoreAction.UPDATE,
       };
     }
 
     const { currentItemFontFamily, currentHoveredFontFamily } = value;
 
-    let nexStoreAction: SnapshotActionType = SnapshotAction.NONE;
+    let nexStoreAction: StoreActionType = StoreAction.NONE;
     let nextFontFamily: FontFamilyValues | undefined;
     let skipOnHoverRender = false;
 
     if (currentItemFontFamily) {
       nextFontFamily = currentItemFontFamily;
-      nexStoreAction = SnapshotAction.CAPTURE;
+      nexStoreAction = StoreAction.CAPTURE;
     } else if (currentHoveredFontFamily) {
       nextFontFamily = currentHoveredFontFamily;
-      nexStoreAction = SnapshotAction.NONE;
+      nexStoreAction = StoreAction.NONE;
 
       const selectedTextElements = getSelectedElements(elements, appState, {
         includeBoundTextElement: true,
@@ -1169,7 +1169,7 @@ export const actionChangeTextAlign = register({
         ...appState,
         currentItemTextAlign: value,
       },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData, app }) => {
@@ -1259,7 +1259,7 @@ export const actionChangeVerticalAlign = register({
       appState: {
         ...appState,
       },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData, app }) => {
@@ -1344,7 +1344,7 @@ export const actionChangeRoundness = register({
         ...appState,
         currentItemRoundness: value,
       },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => {
@@ -1497,7 +1497,7 @@ export const actionChangeArrowhead = register({
           ? "currentItemStartArrowhead"
           : "currentItemEndArrowhead"]: value.type,
       },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => {
@@ -1693,7 +1693,7 @@ export const actionChangeArrowType = register({
         ...appState,
         currentItemArrowType: value,
       },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => {

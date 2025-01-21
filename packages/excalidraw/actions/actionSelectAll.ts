@@ -7,7 +7,7 @@ import { isLinearElement } from "../element/typeChecks";
 import { LinearElementEditor } from "../element/linearElementEditor";
 import { excludeElementsInFramesFromSelection } from "../scene/selection";
 import { selectAllIcon } from "../components/icons";
-import { SnapshotAction } from "../store";
+import { StoreAction } from "../store";
 
 export const actionSelectAll = register({
   name: "selectAll",
@@ -51,7 +51,7 @@ export const actionSelectAll = register({
             ? new LinearElementEditor(elements[0])
             : null,
       },
-      storeAction: SnapshotAction.CAPTURE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   keyTest: (event) => event[KEYS.CTRL_OR_CMD] && event.key === KEYS.A,
