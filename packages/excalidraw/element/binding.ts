@@ -65,6 +65,7 @@ import {
   pointFromVector,
   vectorScale,
   vectorNormalize,
+  vectorRotate,
 } from "../../math";
 import { distanceToBindableElement } from "./distance";
 import { intersectElementWithLine } from "./collision";
@@ -1845,6 +1846,3 @@ export const normalizeFixedPoint = <T extends FixedPoint | null>(
   }
   return fixedPoint as any as T extends null ? null : FixedPoint;
 };
-function vectorRotate(arg0: any, arg1: any): import("../../math").Vector {
-  throw new Error("Function not implemented.");
-}
