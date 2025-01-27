@@ -1,11 +1,10 @@
-/* eslint-disable no-console */
 import throttle from "lodash.throttle";
 import msgpack from "msgpack-lite";
 import ReconnectingWebSocket, {
   type Event,
   type CloseEvent,
 } from "reconnecting-websocket";
-import { Utils } from "./utils";
+import { Network, Utils } from "./utils";
 import {
   LocalDeltasQueue,
   type MetadataRepository,
@@ -16,16 +15,17 @@ import type { StoreChange } from "../store";
 import type { ExcalidrawImperativeAPI } from "../types";
 import type { ExcalidrawElement, SceneElementsMap } from "../element/types";
 import type {
-  CLIENT_MESSAGE_RAW,
   SERVER_DELTA,
-  CHANGE,
+  CLIENT_CHANGE,
   SERVER_MESSAGE,
+  CLIENT_MESSAGE_BINARY,
 } from "./protocol";
 import { debounce } from "../utils";
 import { randomId } from "../random";
 import { orderByFractionalIndex } from "../fractionalIndex";
+import { ENV } from "../constants";
 
-class SocketMessage implements CLIENT_MESSAGE_RAW {
+class SocketMessage implements CLIENT_MESSAGE_BINARY {
   constructor(
     public readonly type: "relay" | "pull" | "push",
     public readonly payload: Uint8Array,
@@ -77,6 +77,7 @@ class SocketClient {
       window.addEventListener("online", this.onOnline);
       window.addEventListener("offline", this.onOffline);
 
+      // eslint-disable-next-line no-console
       console.debug(`Connecting to the room "${this.roomId}"...`);
       this.socket = new ReconnectingWebSocket(
         `${this.host}/connect?roomId=${this.roomId}`,
@@ -103,7 +104,6 @@ class SocketClient {
     { leading: true, trailing: false },
   );
 
-  // CFDO: the connections seem to keep hanging for some reason
   public disconnect() {
     if (this.isDisconnected) {
       return;
@@ -119,6 +119,7 @@ class SocketClient {
       this.socket?.removeEventListener("error", this.onError);
       this.socket?.close();
 
+      // eslint-disable-next-line no-console
       console.debug(`Disconnected from the room "${this.roomId}".`);
     } finally {
       this.socket = null;
@@ -135,7 +136,6 @@ class SocketClient {
       return;
     }
 
-    // CFDO: could be closed / closing / connecting
     if (this.isDisconnected) {
       this.connect();
       return;
@@ -143,7 +143,6 @@ class SocketClient {
 
     const { type, payload } = message;
 
-    // CFDO II: could be slowish for large payloads, thing about a better solution (i.e. msgpack 10x faster, 2x smaller)
     const payloadBuffer = msgpack.encode(payload) as Uint8Array;
     const payloadSize = payloadBuffer.byteLength;
 
@@ -181,81 +180,57 @@ class SocketClient {
   };
 
   private onOpen = (event: Event) => {
+    // eslint-disable-next-line no-console
     console.debug(`Connection to the room "${this.roomId}" opened.`);
     this.isOffline = false;
     this.handlers.onOpen(event);
   };
 
   private onClose = (event: CloseEvent) => {
+    // eslint-disable-next-line no-console
     console.debug(`Connection to the room "${this.roomId}" closed.`, event);
   };
 
   private onError = (event: Event) => {
-    console.debug(
+    // eslint-disable-next-line no-console
+    console.error(
       `Connection to the room "${this.roomId}" returned an error.`,
       event,
     );
   };
 
-  private sendMessage = ({ payload, ...metadata }: CLIENT_MESSAGE_RAW) => {
-    const metadataBuffer = msgpack.encode(metadata) as Uint8Array;
+  private sendMessage = (message: CLIENT_MESSAGE_BINARY) => {
+    const msg = Network.encodeClientMessage(message);
 
-    // contains the length of the rest of the message, so that we could decode it server side
-    const headerBuffer = new ArrayBuffer(4);
-    new DataView(headerBuffer).setUint32(0, metadataBuffer.byteLength);
+    if (import.meta.env.DEV || import.meta.env.MODE === ENV.TEST) {
+      const clientMessage = Network.decodeClientMessage(msg.buffer);
 
-    // concatenate into [header(4 bytes)][metadata][payload]
-    const message = Uint8Array.from([
-      ...new Uint8Array(headerBuffer),
-      ...metadataBuffer,
-      ...payload,
-    ]);
-
-    // CFDO: add dev-level logging
-    {
-      const headerLength = 4;
-      const header = new Uint8Array(message.buffer, 0, headerLength);
-      const metadataLength = new DataView(
-        header.buffer,
-        header.byteOffset,
-      ).getUint32(0);
-
-      const metadata = new Uint8Array(
-        message.buffer,
-        headerLength,
-        headerLength + metadataLength,
-      );
-
-      const payload = new Uint8Array(
-        message.buffer,
-        headerLength + metadataLength,
-      );
-
-      console.log({
-        ...msgpack.decode(metadata),
-        payload,
+      // eslint-disable-next-line no-console
+      console.debug("sendMessage", {
+        ...clientMessage,
+        payload: msgpack.decode(clientMessage.payload),
       });
     }
 
-    this.socket?.send(message);
+    this.socket?.send(msg);
   };
 
+  // CFDO: should be (runtime) type-safe
   private async receiveMessage(
     message: Blob,
   ): Promise<SERVER_MESSAGE | undefined> {
     const arrayBuffer = await message.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
 
-    const [decodedMessage, decodeError] = Utils.try<SERVER_MESSAGE>(() =>
+    const [decodedMessage, decodingError] = Utils.try<SERVER_MESSAGE>(() =>
       msgpack.decode(uint8Array),
     );
 
-    if (decodeError) {
+    if (decodingError) {
       console.error("Failed to decode message:", message);
       return;
     }
 
-    // CFDO: should be type-safe
     return decodedMessage;
   }
 }
@@ -285,7 +260,7 @@ export class SyncClient {
   >();
 
   // #region ACKNOWLEDGED DELTAS & METADATA
-  // CFDO: shouldn't be stateful, only request / response
+  // CFDO II: shouldn't be stateful, only request / response
   private readonly acknowledgedDeltasMap: Map<string, AcknowledgedDelta> =
     new Map();
 
@@ -336,7 +311,7 @@ export class SyncClient {
     return new SyncClient(api, repository, queue, {
       host: SyncClient.HOST_URL,
       roomId: roomId ?? SyncClient.ROOM_ID,
-      // CFDO: temporary, so that all deltas are loaded and applied on init
+      // CFDO II: temporary, so that all deltas are loaded and applied on init
       lastAcknowledgedVersion: 0,
     });
   }
@@ -377,7 +352,7 @@ export class SyncClient {
     }
   }
 
-  // CFDO: should be throttled! 60 fps for live scenes, 10s or so for single player
+  // CFDO: should be throttled! 16ms (60 fps) for live scenes, not needed at all for single player
   public relay(change: StoreChange): void {
     if (this.client.isDisconnected) {
       // don't reconnect if we're explicitly disconnected
@@ -414,7 +389,7 @@ export class SyncClient {
 
   // #region PRIVATE SOCKET MESSAGE HANDLERS
   private onOpen = (event: Event) => {
-    // CFDO: hack to pull everything for on init
+    // CFDO II: hack to pull everything for on init
     this.pull(0);
     this.push();
   };
@@ -425,9 +400,13 @@ export class SyncClient {
     this.push();
   };
 
-  private onMessage = ({ type, payload }: SERVER_MESSAGE) => {
-    // CFDO: add dev-level logging
-    console.log({ type, payload });
+  private onMessage = (serverMessage: SERVER_MESSAGE) => {
+    if (import.meta.env.DEV || import.meta.env.MODE === ENV.TEST) {
+      // eslint-disable-next-line no-console
+      console.debug("onMessage", serverMessage);
+    }
+
+    const { type, payload } = serverMessage;
 
     switch (type) {
       case "relayed":
@@ -441,8 +420,8 @@ export class SyncClient {
     }
   };
 
-  private handleRelayed = (payload: CHANGE) => {
-    // CFDO: retrieve the map already
+  private handleRelayed = (payload: CLIENT_CHANGE) => {
+    // CFDO I: retrieve the map already
     const nextElements = new Map(
       this.api.getSceneElementsIncludingDeleted().map((el) => [el.id, el]),
     ) as SceneElementsMap;
@@ -457,7 +436,6 @@ export class SyncClient {
           !existingElement || // new element
           existingElement.version < relayedElement.version // updated element
         ) {
-          // CFDO: in theory could make the yet unsynced element (due to a bug) to move to the top
           nextElements.set(id, relayedElement);
           this.relayedElementsVersionsCache.set(id, relayedElement.version);
         }
@@ -492,7 +470,7 @@ export class SyncClient {
       ) as SceneElementsMap;
 
       for (const { id, version, payload } of remoteDeltas) {
-        // CFDO: temporary to load all deltas on init
+        // CFDO II: temporary to load all deltas on init
         this.acknowledgedDeltasMap.set(id, {
           delta: StoreDelta.load(payload),
           version,
@@ -503,7 +481,7 @@ export class SyncClient {
           continue;
         }
 
-        // CFDO:strictly checking for out of order deltas; might be relaxed if it becomes a problem
+        // CFDO: strictly checking for out of order deltas; might be relaxed if it becomes a problem
         if (version !== nextAcknowledgedVersion + 1) {
           throw new Error(
             `Received out of order delta, expected "${
