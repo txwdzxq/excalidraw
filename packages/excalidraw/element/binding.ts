@@ -777,7 +777,6 @@ export const bindPointToSnapToElementOutline = (
   p: Readonly<GlobalPoint>,
   otherPoint: Readonly<GlobalPoint>,
   bindableElement: ExcalidrawBindableElement | undefined,
-  elementsMap: ElementsMap,
 ): GlobalPoint => {
   const aabb = bindableElement && aabbForElement(bindableElement);
 
@@ -1143,7 +1142,6 @@ export const calculateFixedPointForElbowArrowBinding = (
     globalPoint,
     otherGlobalPoint,
     hoveredElement,
-    elementsMap,
   );
   const globalMidPoint = pointFrom(
     bounds[0] + (bounds[2] - bounds[0]) / 2,
