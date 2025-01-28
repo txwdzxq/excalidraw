@@ -35,7 +35,7 @@ import type { ElementUpdate } from "./mutateElement";
 import { mutateElement } from "./mutateElement";
 import type Scene from "../scene/Scene";
 import { LinearElementEditor } from "./linearElementEditor";
-import { arrayToMap, tupleToCoors } from "../utils";
+import { arrayToMap, invariant, tupleToCoors } from "../utils";
 import { KEYS } from "../keys";
 import { getBoundTextElement, handleBindTextResize } from "./textElement";
 import { aabbForElement, getElementShape, pointInsideBounds } from "../shapes";
@@ -69,6 +69,9 @@ import {
 } from "../../math";
 import { distanceToBindableElement } from "./distance";
 import { intersectElementWithLine } from "./collision";
+import { RoughGenerator } from "roughjs/bin/generator";
+import { _generateElementShape } from "../scene/Shape";
+import { COLOR_PALETTE } from "../colors";
 
 export type SuggestedBinding =
   | NonDeleted<ExcalidrawBindableElement>
@@ -800,7 +803,9 @@ export const bindPointToSnapToElementOutline = (
         ),
         FIXED_BINDING_DISTANCE,
       ) ?? []),
-    ].filter((p) => p != null);
+    ]
+      .filter((p) => p != null)
+      .sort((g, h) => pointDistanceSq(g!, p) - pointDistanceSq(h!, p));
 
     const isVertical =
       compareHeading(heading, HEADING_LEFT) ||
@@ -1024,6 +1029,73 @@ export const snapToMid = (
   return p;
 };
 
+const getTangentVector = (
+  linearElement: ExcalidrawLinearElement,
+  startOrEnd: "start" | "end",
+) => {
+  import.meta.env.DEV &&
+    invariant(
+      linearElement.points.length > 1,
+      "line must have at least 2 points to determine tangent vector",
+    );
+
+  if (linearElement.roundness == null || isElbowArrow(linearElement)) {
+    return vectorFromPoint(
+      linearElement.points[
+        startOrEnd === "start" ? 0 : linearElement.points.length - 1
+      ],
+      linearElement.points[
+        startOrEnd === "start" ? 1 : linearElement.points.length - 2
+      ],
+    );
+  }
+
+  const shapes =
+    linearElement.roughness > 0
+      ? _generateElementShape(
+          {
+            ...linearElement,
+            roughness: 0,
+          },
+          new RoughGenerator(),
+          {
+            isExporting: false,
+            canvasBackgroundColor: COLOR_PALETTE.white,
+            embedsValidationStatus: null,
+          },
+        )
+      : _generateElementShape(linearElement, new RoughGenerator(), {
+          isExporting: false,
+          canvasBackgroundColor: COLOR_PALETTE.white,
+          embedsValidationStatus: null,
+        });
+
+  import.meta.env.DEV &&
+    invariant(
+      shapes != null &&
+        Array.isArray(shapes) &&
+        shapes.length > 0 &&
+        shapes[0].shape === "curve" &&
+        shapes[0].sets[0] &&
+        shapes[0].sets[0].type === "path",
+      "shape must be an array of Drawable with at least one shape",
+    );
+
+  // @ts-ignore
+  const ops = shapes[0].sets[0].ops;
+  const bcurve = ops[startOrEnd === "start" ? 1 : ops.length - 1];
+
+  invariant(bcurve.op === "bcurveTo", "selected op must be a bcurve");
+
+  return vectorFromPoint(
+    pointFrom<LocalPoint>(
+      bcurve.data[startOrEnd === "start" ? 0 : 4],
+      bcurve.data[startOrEnd === "start" ? 1 : 5],
+    ),
+    pointFrom<LocalPoint>(bcurve.data[2], bcurve.data[3]),
+  );
+};
+
 const updateBoundPoint = (
   linearElement: NonDeleted<ExcalidrawLinearElement>,
   startOrEnd: "startBinding" | "endBinding",
@@ -1084,6 +1156,12 @@ const updateBoundPoint = (
     binding.focus,
     adjacentPoint,
   );
+  const edgePointAbsolute =
+    LinearElementEditor.getPointAtIndexGlobalCoordinates(
+      linearElement,
+      edgePointIndex,
+      elementsMap,
+    );
 
   let newEdgePoint: GlobalPoint;
 
@@ -1092,9 +1170,16 @@ const updateBoundPoint = (
   if (binding.gap === 0) {
     newEdgePoint = focusPointAbsolute;
   } else {
+    const tangentVector = getTangentVector(
+      linearElement,
+      startOrEnd === "startBinding" ? "start" : "end",
+    );
     const intersections = intersectElementWithLine(
       bindableElement,
-      line(adjacentPoint, focusPointAbsolute),
+      line(
+        pointFromVector(tangentVector, edgePointAbsolute),
+        edgePointAbsolute,
+      ),
       binding.gap,
     );
     if (!intersections || intersections.length === 0) {
@@ -1103,6 +1188,11 @@ const updateBoundPoint = (
       newEdgePoint = focusPointAbsolute;
     } else {
       // Guaranteed to intersect because focusPoint is always inside the shape
+      intersections.sort(
+        (g, h) =>
+          pointDistanceSq(g!, edgePointAbsolute) -
+          pointDistanceSq(h!, edgePointAbsolute),
+      );
       newEdgePoint = intersections[0];
     }
   }
